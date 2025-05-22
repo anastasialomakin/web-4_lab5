@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <hr>
+    <form method="POST" action=""> 
+        {{ form.hidden_tag() }}
+        {{ macros.render_user_form_fields(form, is_edit, 
+            user_id_being_edited=(user.id if user and is_edit else None), 
+            disable_role_field_flag=(disable_role_field if is_edit else False) ) }}
+        {{ form.submit(class="btn btn-primary mt-3") }}
+        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Отмена</a>
+    </form>
+{% endblock %}

@@ -1,0 +1,8 @@
+Flask>=2.0
+Flask-Login>=0.5
+Flask-WTF>=1.0
+WTForms>=3.0
+Flask-SQLAlchemy>=2.5  
+Flask-Migrate>=3.1     
+Werkzeug>=2.0          
+gunicorn==22.0.0     

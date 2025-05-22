@@ -1,0 +1,69 @@
+{% macro render_user_form_fields(form, is_edit, user_id_being_edited=None, disable_role_field_flag=False) %}
+    {% if not is_edit %}
+    <div class="mb-3">
+        {{ form.username.label(class="form-label") }}
+        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), autocomplete="off") }}
+        {% if form.username.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.username.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        {{ form.password.label(class="form-label") }}
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else "")) }}
+        {% if form.password.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.password.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+        <small class="form-text text-muted">
+            Пароль: 8-128 симв., заглавная, строчная, цифра, без пробелов. Допустимые символы: ~!?@#$%^&*_-+=()[]{}<>/\|"'.,:;
+        </small>
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        {{ form.first_name.label(class="form-label") }}
+        {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else "")) }}
+        {% if form.first_name.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.first_name.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        {{ form.last_name.label(class="form-label") }}
+        {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else "")) }}
+        {% if form.last_name.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.last_name.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        {{ form.middle_name.label(class="form-label") }}
+        {{ form.middle_name(class="form-control" + (" is-invalid" if form.middle_name.errors else "")) }}
+        {% if form.middle_name.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.middle_name.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mb-3">
+        {{ form.role.label(class="form-label") }}
+        {{ form.role(class="form-select" + (" is-invalid" if form.role.errors else ""), disabled=disable_role_field_flag) }}
+        {% if disable_role_field_flag %}
+            <small class="form-text text-muted">Роль не может быть изменена.</small>
+        {% endif %}
+        {% if form.role.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.role.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endmacro %}
