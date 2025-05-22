@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_very_secret_key_replace_in_production_for_real')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# application = app # Для WSGI
+application = app 
 
 # инициализация бд и менеджер логинов
 db.init_app(app)
