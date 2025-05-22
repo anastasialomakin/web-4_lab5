@@ -1,35 +1,28 @@
 from flask import render_template, request, redirect, url_for, flash, Response
 from flask_login import login_required, current_user
-from . import reports_bp # Import blueprint from current package's __init__
+from . import reports_bp
 
-# Import db, models from the main 'app' module (app.py)
-from app import db, VisitLog, User 
-# Import decorator from 'decorators' module (decorators.py in the root)
-from decorators import check_rights # MODIFIED LINE
+from app import db, VisitLog, User
+from decorators import check_rights
 
 from sqlalchemy import func, desc
 import io
 import csv
-# Removed datetime import as it's not directly used here, but in models
 
-REPORTS_PER_PAGE = 15 
+REPORTS_PER_PAGE = 15
 
 @reports_bp.route('/')
 @login_required
 @check_rights("view_visit_log_page")
 def visit_log_index():
     page = request.args.get('page', 1, type=int)
-    
     query = VisitLog.query
     if current_user.role and current_user.role.name == 'Пользователь':
         query = query.filter_by(user_id=current_user.id)
-    
     logs = query.order_by(VisitLog.created_at.desc()).paginate(page=page, per_page=REPORTS_PER_PAGE, error_out=False)
-    
-    # Note: template path is 'reports/visit_log_index.html' due to template_folder='../templates'
-    # in reports/__init__.py and render_template looking from that root.
     return render_template('reports/visit_log_index.html', logs=logs, title="Журнал посещений")
 
+# ... (rest of your routes.py, no other changes needed in the routes themselves) ...
 @reports_bp.route('/by_page')
 @login_required
 @check_rights("view_detailed_reports")
@@ -67,9 +60,8 @@ def export_by_page_csv():
 @login_required
 @check_rights("view_detailed_reports")
 def report_by_user():
-    # Authenticated user stats
     auth_user_stats_query = db.session.query(
-        User.id.label('user_id'), # Keep user_id for potential linking or detailed view
+        User.id.label('user_id'), 
         User.first_name,
         User.last_name,
         User.middle_name,
@@ -85,13 +77,11 @@ def report_by_user():
         fio = " ".join(p for p in fio_parts if p) or stat.username
         processed_stats.append({'fio': fio, 'visit_count': stat.visit_count})
 
-    # Unauthenticated user stats
     unauth_visits_count = db.session.query(func.count(VisitLog.id))\
                                   .filter(VisitLog.user_id.is_(None)).scalar() or 0
     if unauth_visits_count > 0:
          processed_stats.append({'fio': "Неаутентифицированный пользователь", 'visit_count': unauth_visits_count})
     
-    # Sort all stats together by visit_count
     processed_stats.sort(key=lambda x: x['visit_count'], reverse=True)
 
     return render_template('reports/report_by_user.html', stats=processed_stats, title="Статистика по пользователям")
@@ -136,3 +126,4 @@ def export_by_user_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=report_by_user.csv"}
     )
+# --- END OF MODIFIED FILE reports/routes.py (for Factory Pattern) ---

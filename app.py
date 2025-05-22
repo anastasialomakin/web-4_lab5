@@ -1,27 +1,26 @@
+# --- START OF MODIFIED FILE app.py (возврат к более простой структуре для отладки) ---
 import os
 import re
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, session, flash, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate 
+from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
 from wtforms.validators import DataRequired, Length, EqualTo, Regexp, ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.orm import relationship
-from decorators import check_rights
 
 # конфига
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_very_secret_key_replace_in_production_for_real')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-application = app 
+# application = app # Для WSGI, пока можно закомментировать или оставить
 
 # инициализация бд
 db = SQLAlchemy(app)
-migrate = Migrate(app, db) 
+migrate = Migrate(app, db)
 
 # менеджер логинов
 login_manager = LoginManager()
@@ -30,8 +29,12 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Для доступа к этой странице необходимо войти."
 login_manager.login_message_category = "info"
 
-# бд
+# Импорт декораторов ДО моделей или блюпринтов, если они не зависят от app
+from decorators import check_rights
+
+# бд (Модели)
 class Role(db.Model):
+    # ... (остальной код моделей как был) ...
     __tablename__ = 'roles'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
@@ -83,12 +86,15 @@ class VisitLog(db.Model):
     def __repr__(self):
         return f'<VisitLog {self.path} by User ID {self.user_id} at {self.created_at}>'
 
+
 @login_manager.user_loader
 def load_user(user_id):
+    # Убедимся, что User доступен
     return User.query.get(int(user_id))
 
 # валидатор
 def password_complexity_validator(form, field):
+    # ... (код валидатора) ...
     password = field.data
     errors = []
     if not re.search(r"[A-ZА-Я]", password):
@@ -107,9 +113,9 @@ def password_complexity_validator(form, field):
     if errors:
         raise ValidationError(" ".join(errors))
 
-
-# формы
+# Формы
 class LoginForm(FlaskForm):
+    # ... (код форм) ...
     username = StringField('Логин', validators=[DataRequired(message="Поле не может быть пустым")])
     password = PasswordField('Пароль', validators=[DataRequired(message="Пароль не может быть пустым")])
     remember_me = BooleanField('Запомнить меня')
@@ -134,7 +140,16 @@ class UserForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(UserForm, self).__init__(*args, **kwargs)
-        self.role.choices = [(0, '--- Без роли ---')] + [(role.id, role.name) for role in Role.query.order_by('name').all()]
+        # Динамическая загрузка ролей. Требует контекста приложения.
+        # Лучше делать это в представлении (view function) перед передачей формы в шаблон.
+        # try:
+        #     self.role.choices = [(0, '--- Без роли ---')] + [(r.id, r.name) for r in Role.query.order_by('name').all()]
+        # except Exception: # Если нет контекста приложения или таблицы
+        #     self.role.choices = [(0, '--- Без роли ---')]
+        # Пока оставим так, но это потенциальное место для улучшения/ошибки без контекста
+        self.role.choices = [(0, '--- Без роли ---')] # Заглушка, чтобы избежать ошибки до инициализации БД
+        # В реальном приложении роли загружаются в представлении
+
 
 class UserEditForm(FlaskForm):
     first_name = StringField('Имя', validators=[DataRequired(message="Поле 'Имя' не может быть пустым.")])
@@ -145,7 +160,12 @@ class UserEditForm(FlaskForm):
 
     def __init__(self, *args, **kwargs):
         super(UserEditForm, self).__init__(*args, **kwargs)
-        self.role.choices = [(0, '--- Без роли ---')] + [(role.id, role.name) for role in Role.query.order_by('name').all()]
+        # Аналогично UserForm
+        # try:
+        #     self.role.choices = [(0, '--- Без роли ---')] + [(r.id, r.name) for r in Role.query.order_by('name').all()]
+        # except Exception:
+        #     self.role.choices = [(0, '--- Без роли ---')]
+        self.role.choices = [(0, '--- Без роли ---')]
 
 class ChangePasswordForm(FlaskForm):
     old_password = PasswordField('Старый пароль', validators=[DataRequired(message="Это поле обязательно.")])
@@ -163,10 +183,10 @@ class ChangePasswordForm(FlaskForm):
 class DeleteUserForm(FlaskForm):
     submit = SubmitField('Да, удалить')
 
-
-# декортаторы
+# Контекстный процессор и before_request
 @app.context_processor
 def utility_processor():
+    # ... (код context_processor) ...
     def user_can(action, resource_user_id=None):
         if not current_user.is_authenticated:
             return False
@@ -192,10 +212,11 @@ def utility_processor():
         return False
     return dict(user_can=user_can)
 
-# before_request logger
+
 @app.before_request
 def log_visit():
-    if request.endpoint and (request.endpoint.startswith('static') or 'export' in request.endpoint or request.endpoint == 'visits'): 
+    # ... (код log_visit) ...
+    if request.endpoint and (request.endpoint.startswith('static') or 'export' in request.endpoint or request.endpoint == 'visits' or request.blueprint == 'debugtoolbar'): 
         return
 
     path = request.path
@@ -207,18 +228,20 @@ def log_visit():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Error logging visit: {e}")
+        app.logger.error(f"Error logging visit: {e}") # Используем app.logger
 
+# Маршруты основного приложения
 @app.route('/')
 def index():
-    """Главная страница - список пользователей."""
+    # ... (код index и других маршрутов app) ...
     users = User.query.order_by(User.created_at.desc()).all()
     delete_form = DeleteUserForm() 
     return render_template('index.html', users=users, delete_form=delete_form)
 
+# ... (остальные маршруты: visits, login, logout, secret, CRUD для User, change_password) ...
+# ВАЖНО: убедитесь, что все @app.route декораторы определены ДО импорта и регистрации блюпринта.
 @app.route('/visits')
 def visits():
-    """Страница счетчика посещений."""
     session['visits'] = session.get('visits', 0) + 1
     return render_template('visits.html', visits=session['visits'])
 
@@ -258,20 +281,23 @@ def secret():
 @check_rights("create_user")
 def create_user():
     form = UserForm()
+    with app.app_context(): # Добавляем контекст для запроса ролей
+        form.role.choices = [(0, '--- Без роли ---')] + [(r.id, r.name) for r in Role.query.order_by('name').all()]
+
     if form.validate_on_submit():
         try:
             existing_user = User.query.filter_by(username=form.username.data).first()
             if existing_user:
                 form.username.errors.append("Пользователь с таким логином уже существует.")
                 flash('Ошибка при создании пользователя. Проверьте данные.', 'danger')
-                return render_template('user_form_page.html', form=form, title="Создание пользователя", is_edit=False)
+                return render_template('user_form_page.html', form=form, title="Создание пользователя", is_edit=False, user_id_being_edited=None, disable_role_field=False)
 
             new_user = User(
                 username=form.username.data,
                 first_name=form.first_name.data,
                 last_name=form.last_name.data or None, 
                 middle_name=form.middle_name.data or None,
-                role_id=form.role.data if form.role.data != 0 else None # 0 - без роли
+                role_id=form.role.data if form.role.data != 0 else None 
             )
             new_user.set_password(form.password.data)
             db.session.add(new_user)
@@ -280,11 +306,12 @@ def create_user():
             return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
+            app.logger.error(f'Ошибка при создании пользователя: {str(e)}')
             flash(f'Ошибка при создании пользователя: {str(e)}', 'danger')
-    elif request.method == 'POST':
+    elif request.method == 'POST': # Если не POST, то это GET, и ошибки валидации не нужно показывать
         flash('Ошибка при создании пользователя. Проверьте введенные данные.', 'danger')
 
-    return render_template('user_form_page.html', form=form, title="Создание пользователя", is_edit=False)
+    return render_template('user_form_page.html', form=form, title="Создание пользователя", is_edit=False, user_id_being_edited=None, disable_role_field=False)
 
 
 @app.route('/users/<int:user_id>/view')
@@ -300,6 +327,9 @@ def view_user(user_id):
 def edit_user(user_id):
     user_to_edit = User.query.get_or_404(user_id)
     form = UserEditForm(obj=user_to_edit) 
+    with app.app_context(): # Добавляем контекст для запроса ролей
+        form.role.choices = [(0, '--- Без роли ---')] + [(r.id, r.name) for r in Role.query.order_by('name').all()]
+
 
     disable_role_field = False
     if current_user.role and current_user.role.name == 'Пользователь' and user_to_edit.id == current_user.id:
@@ -320,6 +350,7 @@ def edit_user(user_id):
             return redirect(url_for('index'))
         except Exception as e:
             db.session.rollback()
+            app.logger.error(f'Ошибка при обновлении пользователя: {str(e)}')
             flash(f'Ошибка при обновлении пользователя: {str(e)}', 'danger')
     elif request.method == 'POST': 
          flash('Ошибка при обновлении пользователя. Проверьте введенные данные.', 'danger')
@@ -332,7 +363,7 @@ def edit_user(user_id):
 @check_rights("delete_user", resource_id_param="user_id")
 def delete_user(user_id):
     user_to_delete = User.query.get_or_404(user_id)
-    if user_to_delete == current_user: 
+    if user_to_delete.id == current_user.id : 
         flash('Вы не можете удалить свою учетную запись.', 'warning')
         return redirect(url_for('index'))
     try:
@@ -342,6 +373,7 @@ def delete_user(user_id):
         flash(f'Пользователь {fio} успешно удален.', 'success')
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f'Ошибка при удалении пользователя: {str(e)}')
         flash(f'Ошибка при удалении пользователя: {str(e)}', 'danger')
     return redirect(url_for('index'))
 
@@ -358,24 +390,27 @@ def change_password():
                 return redirect(url_for('index'))
             except Exception as e:
                 db.session.rollback()
+                app.logger.error(f'Ошибка при смене пароля: {str(e)}')
                 flash(f'Ошибка при смене пароля: {str(e)}', 'danger')
         else:
             form.old_password.errors.append('Неверный старый пароль.')
-            flash('Ошибка при смене пароля. Проверьте данные.', 'danger')
-    elif request.method == 'POST': 
+            # flash('Ошибка при смене пароля. Проверьте данные.', 'danger') # Уже есть в errors
+    elif request.method == 'POST' and not form.validate(): # Показываем только если POST и есть ошибки
         flash('Ошибка при смене пароля. Проверьте введенные данные.', 'danger')
+
 
     return render_template('change_password.html', form=form, title="Изменение пароля")
 
-# Register blueprint
-from reports import reports_bp
+
+# **КЛЮЧЕВОЙ МОМЕНТ**: Импорт и регистрация блюпринта ПОСЛЕ ВСЕХ @app.route
+# Это гарантирует, что основное приложение 'app' полностью сконфигурировано.
+from reports import reports_bp  # reports_bp определяется в reports/__init__.py
 app.register_blueprint(reports_bp)
 
-# админ вручную
+# Функция для создания первоначальных ролей и администратора
 def create_initial_roles_and_admin():
-    with app.app_context():
-        db.create_all() 
-
+    with app.app_context(): # Нужен контекст приложения для работы с БД
+        db.create_all()
         if Role.query.count() == 0:
             print("Creating initial roles...")
             admin_role = Role(name='Администратор', description='Полный доступ к системе')
@@ -389,8 +424,10 @@ def create_initial_roles_and_admin():
 
         if User.query.filter_by(username='admin').first() is None:
             print("Creating admin user...")
+            if not admin_role:
+                 admin_role = Role.query.filter_by(name='Администратор').first()
             admin_user = User(username='admin', first_name='Админ', role_id=admin_role.id if admin_role else None)
-            admin_user.set_password('Admin123!') 
+            admin_user.set_password('Admin123!')
             db.session.add(admin_user)
             db.session.commit()
             print("Admin user created. Login: admin, Password: Admin123!")
@@ -398,5 +435,6 @@ def create_initial_roles_and_admin():
             print("Admin user already exists.")
 
 if __name__ == '__main__':
-    create_initial_roles_and_admin() 
+    create_initial_roles_and_admin()
     app.run(debug=True)
+# --- END OF MODIFIED FILE app.py ---
