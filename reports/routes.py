@@ -1,10 +1,9 @@
 from flask import render_template, request, redirect, url_for, flash, Response
 from flask_login import login_required, current_user
 from . import reports_bp
-
-from app import db, VisitLog, User
+from extensions import db  # импорт db
+from models import VisitLog, User  # импорт моделей
 from decorators import check_rights
-
 from sqlalchemy import func, desc
 import io
 import csv
@@ -22,7 +21,6 @@ def visit_log_index():
     logs = query.order_by(VisitLog.created_at.desc()).paginate(page=page, per_page=REPORTS_PER_PAGE, error_out=False)
     return render_template('reports/visit_log_index.html', logs=logs, title="Журнал посещений")
 
-# ... (rest of your routes.py, no other changes needed in the routes themselves) ...
 @reports_bp.route('/by_page')
 @login_required
 @check_rights("view_detailed_reports")
@@ -126,4 +124,3 @@ def export_by_user_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=report_by_user.csv"}
     )
-# --- END OF MODIFIED FILE reports/routes.py (for Factory Pattern) ---
