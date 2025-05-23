@@ -6,7 +6,7 @@ def check_rights(action, resource_id_param=None):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            if not current_user.is_authenticated: # Should be caught by @login_required first
+            if not current_user.is_authenticated:
                 flash("Для доступа к этой странице необходимо войти.", "info")
                 return redirect(url_for('login', next=request.url))
 
@@ -15,7 +15,7 @@ def check_rights(action, resource_id_param=None):
             has_permission = False
             user_role_name = current_user.role.name if current_user.role else None
 
-            # Administrator permissions
+            # права администратора
             if user_role_name == 'Администратор':
                 if action == "create_user": has_permission = True
                 elif action == "edit_user": has_permission = True 
@@ -23,10 +23,10 @@ def check_rights(action, resource_id_param=None):
                 elif action == "delete_user":
                     if target_resource_id and int(target_resource_id) != current_user.id:
                         has_permission = True
-                elif action in ["view_visit_log_page", "view_detailed_reports"]: # covers all report views and exports
+                elif action in ["view_visit_log_page", "view_detailed_reports"]: 
                     has_permission = True
             
-            # Пользователь permissions
+            # права пользователя
             elif user_role_name == 'Пользователь':
                 if action == "edit_user":
                     if target_resource_id and int(target_resource_id) == current_user.id:

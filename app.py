@@ -18,15 +18,16 @@ application = app
 
 # инициализация бд и менеджер логинов
 db.init_app(app)
-migrate = Migrate(app, db) # Migrate инициализируется с app и db
-login_manager.init_app(app) # LoginManager инициализируется с app
+migrate = Migrate(app, db) 
+login_manager.init_app(app) 
 login_manager.login_view = 'login'
 login_manager.login_message = "Для доступа к этой странице необходимо войти."
 login_manager.login_message_category = "info"
 
-# Импорт декораторов ДО моделей или блюпринтов
+# импорт декоратора
 from decorators import check_rights
 
+# загрузчик пользователя по айди
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -79,8 +80,6 @@ class UserForm(FlaskForm):
         super(UserForm, self).__init__(*args, **kwargs)
         self.role.choices = [(0, '--- Без роли ---')] 
 
-
-
 class UserEditForm(FlaskForm):
     first_name = StringField('Имя', validators=[DataRequired(message="Поле 'Имя' не может быть пустым.")])
     last_name = StringField('Фамилия')
@@ -108,7 +107,7 @@ class ChangePasswordForm(FlaskForm):
 class DeleteUserForm(FlaskForm):
     submit = SubmitField('Да, удалить')
 
-# Контекстный процессор и before_request
+# контекстный процессор для интерфейса
 @app.context_processor
 def utility_processor():
     def user_can(action, resource_user_id=None):
@@ -136,6 +135,7 @@ def utility_processor():
         return False
     return dict(user_can=user_can)
 
+# запись посещенных страниц в журнал
 @app.before_request
 def log_visit():
     if request.endpoint and (request.endpoint.startswith('static') or 'export' in request.endpoint or request.endpoint == 'visits' or request.blueprint == 'debugtoolbar'): 
@@ -152,7 +152,7 @@ def log_visit():
         db.session.rollback()
         app.logger.error(f"Error logging visit: {e}") 
 
-# Маршруты основного приложения
+# декораторы
 @app.route('/')
 def index():
     users = User.query.order_by(User.created_at.desc()).all()
@@ -276,7 +276,6 @@ def edit_user(user_id):
 
     return render_template('user_form_page.html', form=form, title=f"Редактирование: {user_to_edit.get_fio()}", user=user_to_edit, is_edit=True, user_id_being_edited=user_to_edit.id, disable_role_field=disable_role_field)
 
-
 @app.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 @check_rights("delete_user", resource_id_param="user_id")
@@ -320,11 +319,11 @@ def change_password():
     return render_template('change_password.html', form=form, title="Изменение пароля")
 
 
-# Импорт и регистрация блюпринта ПОСЛЕ ВСЕХ @app.route
+# импорт и регистрация блюпринта 
 from reports import reports_bp  # reports_bp определяется в reports/__init__.py
 app.register_blueprint(reports_bp)
 
-# Функция для создания первоначальных ролей и администратора
+# админ вручную
 def create_initial_roles_and_admin():
     with app.app_context(): 
         db.create_all()
