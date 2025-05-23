@@ -124,7 +124,7 @@ def utility_processor():
             if action == "delete_any_user":
                 return resource_user_id is None or int(resource_user_id) != current_user.id
             if action == "view_visit_log_page": return True
-            if action == "view_detailed_reports": return True # For /by_page, /by_user links & pages
+            if action == "view_detailed_reports": return True 
 
         # Пользователь
         elif user_role_name == 'Пользователь':
@@ -232,7 +232,6 @@ def create_user():
 
     return render_template('user_form_page.html', form=form, title="Создание пользователя", is_edit=False, user_id_being_edited=None, disable_role_field=False)
 
-
 @app.route('/users/<int:user_id>/view')
 @login_required
 @check_rights("view_user", resource_id_param="user_id")
@@ -248,7 +247,6 @@ def edit_user(user_id):
     form = UserEditForm(obj=user_to_edit) 
     with app.app_context():
         form.role.choices = [(0, '--- Без роли ---')] + [(r.id, r.name) for r in Role.query.order_by('name').all()]
-
 
     disable_role_field = False
     if current_user.role and current_user.role.name == 'Пользователь' and user_to_edit.id == current_user.id:
@@ -317,7 +315,6 @@ def change_password():
 
 
     return render_template('change_password.html', form=form, title="Изменение пароля")
-
 
 # импорт и регистрация блюпринта 
 from reports import reports_bp  # reports_bp определяется в reports/__init__.py
